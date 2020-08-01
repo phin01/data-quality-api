@@ -1,32 +1,24 @@
-from flask import Flask, jsonify, request
-from flask_restful import Resource, Api
+from flask import Flask, request
+from prometheus_flask_exporter import PrometheusMetrics
+import random
+from prometheus_client import Counter
+
 
 app = Flask(__name__)
+metrics = PrometheusMetrics(app, group_by='endpoint')
 
-api = Api(app)
+@app.route('/')
+def main():
+    return 'OK'
 
-items = []
+@app.route('/kpi')
+@metrics.counter(
+    'KPI_OXE', 'Number of invocations per collection', labels={
+        'status': lambda resp: resp.status_code,
+        'status2': lambda: random.random()
+    })
+def get_item_from_collection():
+    output = 'KPI_ALEATORIO{endpoint="main",le="0.005",method="GET",status="200"} ' + str(random.random()) + "\n" + 'KPI_ALEATORIO2{endpoint="main",le="0.005",method="GET",status="200"} 5.0'
+    return output
 
-
-class Items(Resource):
-    def get(self):
-        return items
-
-
-class Item(Resource):
-    def get(self, name):
-        for item in items:
-            if item['name'] == name:
-                return item
-        return {'message': 'item not found'}, 404
-
-    def post(self, name):
-        new_item = {'name': name, 'price': 12}
-        items.append(new_item)
-        return new_item, 201
-
-
-api.add_resource(Item, '/item/<string:name>')
-api.add_resource(Items, '/items')
-
-app.run(port=5000, debug=True)
+app.run(port=5000)
